@@ -168,6 +168,10 @@ UIYabause::UIYabause( QWidget* parent )
 	connect( mYabauseGL, SIGNAL( emulationPaused()), this, SLOT (runActions()));
 	connect( mYabauseThread, SIGNAL( emulationAlreadyPaused()), this, SLOT (runActionsAlreadyPaused()));
 	connect( mYabauseThread, SIGNAL( initDone()), this, SLOT (threadInitialized()));
+	// YabauseThread emits initDone() from its own constructor, before the connect() above exists: the signal
+	// went nowhere and the ST-V game list (STVGetRomList) was never made at start - an ST-V game started with -a
+	// failed with "Cannot initialize STV emulation". Called directly, as the fork does since 23/08/2026.
+	threadInitialized();
 
 	// Load shortcuts
 	VolatileSettings* vs = QtYabause::volatileSettings();

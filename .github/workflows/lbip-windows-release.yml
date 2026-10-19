@@ -1,0 +1,80 @@
+name: Kronos 2.7.5b for Windows (portable zip)
+
+# Kronos 2.7.5 as Tradu-France publishes it (the last commit before it, 66bd0836d) with one fix: the ST-V game list made at
+# start, so an ST-V game started with -a runs (BenjaminSiskoo/Kronos_test 5109a1a2a / 60303bf59). Built as the fork's own
+# Windows workflow builds it (Qt 5.15.2 MSVC, SDL2), then laid out as Tradu-France's zip: kronos.exe, Qt and SDL2 beside
+# it, an empty kronos.ini (portable mode), vc_redist.x64.exe. A tag v* publishes it as a release.
+
+on:
+  push:
+    branches: [ lbip-2.7.5b ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: '5.15.2'
+        modules: 'all'
+
+    - name: SDL2
+      shell: pwsh
+      run: |
+        Invoke-WebRequest -OutFile SDL2.zip -Uri https://github.com/libsdl-org/SDL/releases/download/release-2.30.8/SDL2-devel-2.30.8-VC.zip
+        Expand-Archive -Force SDL2.zip .\
+        mv SDL2-2.30.8 ${{github.workspace}}/SDL2
+        rm SDL2.zip
+
+    - name: Configure
+      env:
+        sdl2lib_DIR: ${{github.workspace}}\SDL2
+        sdl2_DIR: ${{github.workspace}}\SDL2\cmake
+      run: cmake -S ${{github.workspace}}/yabause -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+    - name: Lay out the portable folder
+      shell: pwsh
+      run: |
+        $out = "${{github.workspace}}\Kronos"
+        cmake --install ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --prefix $out
+        if (Test-Path "$out\kronos-qt.exe") { Rename-Item "$out\kronos-qt.exe" "kronos.exe" }
+        if (-not (Test-Path "$out\SDL2.dll")) { Copy-Item "${{github.workspace}}\SDL2\lib\x64\SDL2.dll" $out }
+        New-Item -ItemType File "$out\kronos.ini" -Force | Out-Null
+        Invoke-WebRequest -OutFile "$out\vc_redist.x64.exe" -Uri https://aka.ms/vs/17/release/vc_redist.x64.exe
+        Copy-Item "${{github.workspace}}\yabause\COPYING" "$out\COPYING.txt"
+        Set-Content "$out\README-2.7.5b.txt" -Encoding utf8 -Value @(
+          "Kronos 2.7.5b - Kronos 2.7.5 (Tradu-France, BenjaminSiskoo/Kronos_test 66bd0836d) with one fix:",
+          "the ST-V game list is made at start, so an ST-V game started with -a runs.",
+          "Source: https://github.com/${{github.repository}} (branch lbip-2.7.5b). GPL-2.0, see COPYING.txt.")
+        Get-ChildItem $out | Select-Object Name, Length | Format-Table -AutoSize
+        Compress-Archive -Path "$out\*" -DestinationPath "${{github.workspace}}\Kronos_2.7.5b_-_64_Bits.zip"
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: Kronos_2.7.5b_-_64_Bits
+        path: Kronos_2.7.5b_-_64_Bits.zip
+
+    - name: Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v2
+      with:
+        name: Kronos 2.7.5b (Windows 64-bit)
+        files: Kronos_2.7.5b_-_64_Bits.zip
+        body: |
+          Kronos 2.7.5 as published by Tradu-France (BenjaminSiskoo/Kronos_test, commit 66bd0836d) with one fix taken from the fork (5109a1a2a / 60303bf59): the ST-V game list is made at start, so an ST-V game started with `-a` runs instead of "Cannot initialize STV emulation".
+
+          Portable: unzip, keep the empty kronos.ini beside kronos.exe. Needs the Microsoft Visual C++ runtime (vc_redist.x64.exe, included).
