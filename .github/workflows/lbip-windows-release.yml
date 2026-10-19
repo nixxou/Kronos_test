@@ -13,6 +13,9 @@ on:
 
 env:
   BUILD_TYPE: Release
+  # CMake 4 on the runner refuses cmake_minimum_required below 3.5 (libchdr, zlib, the m68kmake ExternalProject): an
+  # environment variable reaches the sub-builds too, which a -D on the command line does not.
+  CMAKE_POLICY_VERSION_MINIMUM: '3.5'
 
 jobs:
   build:
@@ -41,7 +44,7 @@ jobs:
       env:
         sdl2lib_DIR: ${{github.workspace}}\SDL2
         sdl2_DIR: ${{github.workspace}}\SDL2\cmake
-      run: cmake -S ${{github.workspace}}/yabause -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+      run: cmake -S ${{github.workspace}}/yabause -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
