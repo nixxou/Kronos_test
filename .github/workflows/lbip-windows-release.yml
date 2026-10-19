@@ -41,7 +41,7 @@ jobs:
       env:
         sdl2lib_DIR: ${{github.workspace}}\SDL2
         sdl2_DIR: ${{github.workspace}}\SDL2\cmake
-      run: cmake -S ${{github.workspace}}/yabause -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+      run: cmake -S ${{github.workspace}}/yabause -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
